@@ -7,6 +7,7 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 - User registration with comprehensive validation
 - **Email verification system** with validation codes
 - **Game user management** with level, experience, and money tracking
+- **Card management system** with types, elements, and legends
 - Login endpoint that receives email and password
 - JWT token generation with expiration (24 hours)
 - Protected endpoint for token validation
@@ -59,92 +60,6 @@ Each user account has an associated `UserInfo` record that contains:
 - **Level**: Minimum 1
 - **Experience**: Minimum 0
 - **Money**: Minimum 0
-
-## Project Structure
-
-```
-TCG_Server_GO/
-├── main.go              # Main entry point
-├── go.mod               # Dependency management
-├── README.md            # Documentation
-├── ENVIRONMENT.md       # Environment variables documentation
-├── EMAIL_VERIFICATION.md # Email verification documentation
-├── models/              # Data structures
-│   ├── user.go
-│   └── user_info.go     # Game user information model
-├── database/            # Database operations
-│   ├── database.go      # Database connection and configuration
-│   ├── users.go         # User database operations
-│   └── user_info.go     # UserInfo database operations
-├── auth/                # Authentication logic
-│   ├── jwt.go           # JWT token handling
-│   └── users.go         # User management
-├── handlers/            # HTTP handlers
-│   ├── auth.go          # Login, register, and email verification handlers
-│   ├── user_info.go     # Game user info handlers
-│   ├── validate.go      # Validation handler and custom validation
-│   ├── health.go        # Health check handler
-│   └── routes.go        # Route configuration
-└── middleware/          # Middlewares
-    └── auth.go          # Authentication middleware
-```
-
-## Database Schema
-
-### Users Table
-
-```sql
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    validation_code VARCHAR(255) NULL,
-    validation_code_expires_at TIMESTAMP NULL,
-    validated_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
-### User Info Table
-
-```sql
-CREATE TABLE user_info (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL UNIQUE,
-    level INT NOT NULL DEFAULT 1,
-    experience INT NOT NULL DEFAULT 0,
-    money INT NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
-## Installation
-
-1. Ensure you have Go installed (version 1.21 or higher)
-
-2. Install MariaDB and create a database
-
-3. Clone or download this project
-
-4. Install dependencies:
-```bash
-go mod tidy
-```
-
-5. Configure environment variables (see `ENVIRONMENT.md` for details)
-
-6. Run the server:
-```bash
-go run main.go
-```
-
-The server will start on port 8080 by default. You can change the port using the `PORT` environment variable.
 
 ## API Endpoints
 
@@ -223,6 +138,113 @@ Authenticates user with email and password.
 }
 ```
 
+### Card Endpoints (Public Access - Read Only)
+
+**Important:** Cards are managed via server-side seeds and cannot be modified through the API. All card endpoints are read-only to ensure data integrity and prevent unauthorized modifications.
+
+#### GET /cards
+Retrieves all cards from the database.
+
+**Response:**
+```json
+{
+  "cards": [
+    {
+      "id": 1,
+      "name": "Dragon Warrior",
+      "type": "Monster",
+      "legend": "A powerful dragon warrior with fire abilities",
+      "element": "Fire",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "message": "Cards retrieved successfully"
+}
+```
+
+#### GET /cards/{id}
+Retrieves a specific card by ID.
+
+**Response:**
+```json
+{
+  "card": {
+    "id": 1,
+    "name": "Dragon Warrior",
+    "type": "Monster",
+    "legend": "A powerful dragon warrior with fire abilities",
+    "element": "Fire",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  },
+  "message": "Card retrieved successfully"
+}
+```
+
+#### GET /cards/type/{type}
+Retrieves all cards of a specific type (Monster, Spell, or Energy).
+
+**Response:**
+```json
+{
+  "cards": [
+    {
+      "id": 1,
+      "name": "Dragon Warrior",
+      "type": "Monster",
+      "legend": "A powerful dragon warrior with fire abilities",
+      "element": "Fire",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "message": "Cards retrieved successfully"
+}
+```
+
+#### GET /cards/element/{element}
+Retrieves all cards of a specific element.
+
+**Response:**
+```json
+{
+  "cards": [
+    {
+      "id": 1,
+      "name": "Dragon Warrior",
+      "type": "Monster",
+      "legend": "A powerful dragon warrior with fire abilities",
+      "element": "Fire",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "message": "Cards retrieved successfully"
+}
+```
+
+#### GET /cards/search?q={search_term}
+Searches for cards by name (partial match).
+
+**Response:**
+```json
+{
+  "cards": [
+    {
+      "id": 1,
+      "name": "Dragon Warrior",
+      "type": "Monster",
+      "legend": "A powerful dragon warrior with fire abilities",
+      "element": "Fire",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "message": "Cards found successfully"
+}
+```
+
 ### Game User Info Endpoints (All require authentication)
 
 #### GET /api/user-info
@@ -278,6 +300,58 @@ Checks server status.
 }
 ```
 
+## Database Schema
+
+### Users Table
+
+```sql
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    validation_code VARCHAR(255) NULL,
+    validation_code_expires_at TIMESTAMP NULL,
+    validated_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### User Info Table
+
+```sql
+CREATE TABLE user_info (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    level INT NOT NULL DEFAULT 1,
+    experience INT NOT NULL DEFAULT 0,
+    money INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### Cards Table
+
+```sql
+CREATE TABLE cards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type ENUM('Monster', 'Spell', 'Energy') NOT NULL,
+    legend TEXT NOT NULL,
+    element ENUM('Fire', 'Water', 'Wind', 'Earth', 'Neutral', 'Holy', 'Dark') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_type (type),
+    INDEX idx_element (element),
+    INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
 ## Database Operations
 
 The application includes comprehensive database operations:
@@ -308,6 +382,22 @@ The application includes comprehensive database operations:
 - **CreateDefaultUserInfo**: Create default user info for new users
 
 **Note:** Game modification functions (AddExperience, AddMoney, SpendMoney) are only available internally for server-side game logic and cannot be accessed directly by clients.
+
+### Card Operations
+- **GetCardByID**: Retrieve card by ID
+- **GetCardByName**: Retrieve card by name
+- **GetAllCards**: Retrieve all cards
+- **GetCardsByType**: Retrieve cards by type (Monster/Spell/Energy)
+- **GetCardsByElement**: Retrieve cards by element
+- **SearchCards**: Search cards by name (partial match)
+- **CreateCard**: Create new card record (internal use only - for seeds)
+- **UpdateCard**: Update card information (internal use only)
+- **UpdateCardPartial**: Update specific card fields (internal use only)
+- **DeleteCard**: Delete card by ID (internal use only)
+- **CardExists**: Check if card exists by ID
+- **CardNameExists**: Check if card exists by name
+
+**Note:** Card modification functions (CreateCard, UpdateCard, DeleteCard) are only available internally for server-side seeds and cannot be accessed directly by clients.
 
 ## Usage Examples
 
@@ -346,7 +436,22 @@ curl -X GET http://localhost:8080/api/user-info \
   -H "Authorization: Bearer <token_from_login>"
 ```
 
-**Important:** User game information (level, experience, money) is **read-only** and controlled entirely by server-side game logic. Clients can only:
-- View their current game information
+### 3. Card Operations (Read-only)
+```bash
+# Get all cards
+curl -X GET http://localhost:8080/cards
 
-All modifications to game stats (experience, money, level) happen automatically during gameplay through server-side logic to maintain complete game integrity and prevent any form of cheating. 
+# Get cards by type
+curl -X GET http://localhost:8080/cards/type/Monster
+
+# Get cards by element
+curl -X GET http://localhost:8080/cards/element/Fire
+
+# Search cards
+curl -X GET "http://localhost:8080/cards/search?q=dragon"
+
+# Get specific card by ID
+curl -X GET http://localhost:8080/cards/1
+```
+
+**Important:** Cards are managed via server-side seeds and cannot be modified through the API. All card operations are read-only to ensure data integrity.

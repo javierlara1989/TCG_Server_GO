@@ -38,6 +38,13 @@ func main() {
 	fmt.Println("  GET  /health - Server health check")
 	fmt.Println("  GET  /api/validate - Token validation (requires authentication)")
 	fmt.Println("  GET  /api/user-info - Get user game info (requires authentication)")
+	fmt.Println("")
+	fmt.Println("Card Management (Read-only):")
+	fmt.Println("  GET  /cards - Get all cards")
+	fmt.Println("  GET  /cards/search?q=<term> - Search cards by name")
+	fmt.Println("  GET  /cards/type/{type} - Get cards by type (Monster/Spell/Energy)")
+	fmt.Println("  GET  /cards/element/{element} - Get cards by element")
+	fmt.Println("  GET  /cards/{id} - Get card by ID")
 
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }

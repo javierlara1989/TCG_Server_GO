@@ -103,6 +103,21 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createCardsTable := `
+	CREATE TABLE IF NOT EXISTS cards (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		type ENUM('Monster', 'Spell', 'Energy') NOT NULL,
+		legend TEXT NOT NULL,
+		element ENUM('Fire', 'Water', 'Wind', 'Earth', 'Neutral', 'Holy', 'Dark') NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		INDEX idx_type (type),
+		INDEX idx_element (element),
+		INDEX idx_name (name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	// Create users table first
 	_, err := DB.Exec(createUsersTable)
 	if err != nil {
@@ -113,6 +128,12 @@ func CreateTables() error {
 	_, err = DB.Exec(createUserInfoTable)
 	if err != nil {
 		return fmt.Errorf("error creating user_info table: %v", err)
+	}
+
+	// Create cards table
+	_, err = DB.Exec(createCardsTable)
+	if err != nil {
+		return fmt.Errorf("error creating cards table: %v", err)
 	}
 
 	log.Println("Database tables created successfully")
