@@ -89,9 +89,30 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createUserInfoTable := `
+	CREATE TABLE IF NOT EXISTS user_info (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		user_id INT NOT NULL UNIQUE,
+		level INT NOT NULL DEFAULT 1,
+		experience INT NOT NULL DEFAULT 0,
+		money INT NOT NULL DEFAULT 0,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		INDEX idx_user_id (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
+	// Create users table first
 	_, err := DB.Exec(createUsersTable)
 	if err != nil {
 		return fmt.Errorf("error creating users table: %v", err)
+	}
+
+	// Create user_info table
+	_, err = DB.Exec(createUserInfoTable)
+	if err != nil {
+		return fmt.Errorf("error creating user_info table: %v", err)
 	}
 
 	log.Println("Database tables created successfully")

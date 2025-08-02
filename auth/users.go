@@ -1,9 +1,11 @@
 package auth
 
 import (
-	"golang.org/x/crypto/bcrypt"
+	"log"
 	"tcg-server-go/database"
 	"tcg-server-go/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Sample users (fallback for testing when database is not available)
@@ -67,7 +69,20 @@ func AddUser(user *models.User) error {
 
 	// Try database first
 	if database.DB != nil {
-		return database.CreateUser(user)
+		err = database.CreateUser(user)
+		if err != nil {
+			return err
+		}
+
+		// Create default user info for the new user
+		_, err = database.CreateDefaultUserInfo(user.ID)
+		if err != nil {
+			// Log the error but don't fail user creation
+			// User can still exist without user info
+			log.Printf("Failed to create default user info for user %d: %v", user.ID, err)
+		}
+
+		return nil
 	}
 
 	// Fallback to in-memory users for testing
@@ -84,4 +99,4 @@ func CreateUser(req *models.CreateUserRequest) (*models.User, error) {
 	}
 
 	return user, AddUser(user)
-} 
+}

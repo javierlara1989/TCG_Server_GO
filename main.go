@@ -37,6 +37,7 @@ func main() {
 	fmt.Println("  POST /login - User authentication")
 	fmt.Println("  GET  /health - Server health check")
 	fmt.Println("  GET  /api/validate - Token validation (requires authentication)")
+	fmt.Println("  GET  /api/user-info - Get user game info (requires authentication)")
 
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }

@@ -1,11 +1,12 @@
 # JWT Authentication Server in Go
 
-A modular Go server that handles JWT authentication with MariaDB database integration and email verification system, organized in separate packages for better maintainability and production readiness.
+A modular Go server that handles JWT authentication with MariaDB database integration, email verification system, and game user management, organized in separate packages for better maintainability and production readiness.
 
 ## Features
 
 - User registration with comprehensive validation
 - **Email verification system** with validation codes
+- **Game user management** with level, experience, and money tracking
 - Login endpoint that receives email and password
 - JWT token generation with expiration (24 hours)
 - Protected endpoint for token validation
@@ -17,22 +18,21 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 - **Automatic table creation** on startup
 - **Advanced input validation** with custom rules
 - **Email verification workflow** with expiration and resend functionality
+- **Game progression system** with automatic level up and rewards
 
-## Email Verification System
+## Game User Management
 
-### How it Works
-1. **User Registration**: User registers with email, password, and name
-2. **Validation Code Generation**: System generates a 6-character random code
-3. **Email Sent**: Code is sent to user's email (implementation needed)
-4. **Email Verification**: User enters the code to verify their email
-5. **Account Activation**: Account is marked as verified
+### UserInfo Model
+Each user account has an associated `UserInfo` record that contains:
+- **Level**: Current player level (starts at 1)
+- **Experience**: Current experience points (starts at 0)
+- **Money**: Current money balance (starts at 100)
 
-### Security Features
-- **24-hour expiration** for validation codes
-- **One-time use** codes (deleted after verification)
-- **Case-insensitive** code matching
-- **Prevents duplicate verification** attempts
-- **Resend functionality** for expired codes
+### Game Features
+- **Automatic level up**: When experience reaches level * 1000
+- **Level up rewards**: Bonus money when leveling up
+- **Money management**: Add and spend money with validation
+- **Experience tracking**: Add experience points with automatic progression
 
 ## Input Validation Rules
 
@@ -55,6 +55,11 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 - **Case-insensitive** matching
 - **Required for email verification**
 
+### Game Values
+- **Level**: Minimum 1
+- **Experience**: Minimum 0
+- **Money**: Minimum 0
+
 ## Project Structure
 
 ```
@@ -63,16 +68,20 @@ TCG_Server_GO/
 ├── go.mod               # Dependency management
 ├── README.md            # Documentation
 ├── ENVIRONMENT.md       # Environment variables documentation
+├── EMAIL_VERIFICATION.md # Email verification documentation
 ├── models/              # Data structures
-│   └── user.go
+│   ├── user.go
+│   └── user_info.go     # Game user information model
 ├── database/            # Database operations
 │   ├── database.go      # Database connection and configuration
-│   └── users.go         # User database operations
+│   ├── users.go         # User database operations
+│   └── user_info.go     # UserInfo database operations
 ├── auth/                # Authentication logic
 │   ├── jwt.go           # JWT token handling
 │   └── users.go         # User management
 ├── handlers/            # HTTP handlers
 │   ├── auth.go          # Login, register, and email verification handlers
+│   ├── user_info.go     # Game user info handlers
 │   ├── validate.go      # Validation handler and custom validation
 │   ├── health.go        # Health check handler
 │   └── routes.go        # Route configuration
@@ -96,6 +105,22 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### User Info Table
+
+```sql
+CREATE TABLE user_info (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    level INT NOT NULL DEFAULT 1,
+    experience INT NOT NULL DEFAULT 0,
+    money INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
@@ -123,7 +148,9 @@ The server will start on port 8080 by default. You can change the port using the
 
 ## API Endpoints
 
-### POST /register
+### Authentication Endpoints
+
+#### POST /register
 Registers a new user with validation. Generates a validation code that should be sent via email.
 
 **Request:**
@@ -142,9 +169,7 @@ Registers a new user with validation. Generates a validation code that should be
 }
 ```
 
-**Note:** The validation code is generated and stored in the database. You need to implement email sending functionality to send the code to the user.
-
-### POST /verify-email
+#### POST /verify-email
 Verifies a user's email with the provided validation code.
 
 **Request:**
@@ -163,24 +188,7 @@ Verifies a user's email with the provided validation code.
 }
 ```
 
-**Error Responses:**
-```json
-{
-  "error": "invalid validation code"
-}
-```
-```json
-{
-  "error": "validation code has expired"
-}
-```
-```json
-{
-  "error": "email already verified"
-}
-```
-
-### POST /resend-code
+#### POST /resend-code
 Resends a new validation code to the user's email.
 
 **Request:**
@@ -197,7 +205,7 @@ Resends a new validation code to the user's email.
 }
 ```
 
-### POST /login
+#### POST /login
 Authenticates user with email and password.
 
 **Request:**
@@ -215,7 +223,37 @@ Authenticates user with email and password.
 }
 ```
 
-### GET /api/validate
+### Game User Info Endpoints (All require authentication)
+
+#### GET /api/user-info
+Retrieves the current user's game information.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "user_info": {
+    "id": 1,
+    "user_id": 1,
+    "level": 1,
+    "experience": 0,
+    "money": 100,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  },
+  "message": "User info retrieved successfully"
+}
+```
+
+**Important:** User game information (level, experience, money) is **read-only** and can only be modified through server-side game logic during actual gameplay. This ensures complete game integrity and prevents any form of cheating or manipulation.
+
+### Other Endpoints
+
+#### GET /api/validate
 Validates a JWT token (requires authentication).
 
 **Headers:**
@@ -230,7 +268,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### GET /health
+#### GET /health
 Checks server status.
 
 **Response:**
@@ -244,6 +282,7 @@ Checks server status.
 
 The application includes comprehensive database operations:
 
+### User Operations
 - **CreateUser**: Create new users with validation codes
 - **GetUserByEmail**: Retrieve user by email
 - **GetUserByID**: Retrieve user by ID
@@ -255,10 +294,26 @@ The application includes comprehensive database operations:
 - **HardDeleteUser**: Permanently delete user
 - **EmailExists**: Check if email already exists
 
+### UserInfo Operations
+- **CreateUserInfo**: Create new user info record
+- **GetUserInfoByUserID**: Retrieve user info by user ID
+- **GetUserInfoByID**: Retrieve user info by its own ID
+- **UpdateUserInfo**: Update user info (internal use only)
+- **UpdateUserInfoPartial**: Update specific fields (internal use only)
+- **AddExperience**: Add experience with automatic level up (internal use only)
+- **AddMoney**: Add money to user account (internal use only)
+- **SpendMoney**: Spend money with validation (internal use only)
+- **DeleteUserInfo**: Delete user info
+- **UserInfoExists**: Check if user info exists
+- **CreateDefaultUserInfo**: Create default user info for new users
+
+**Note:** Game modification functions (AddExperience, AddMoney, SpendMoney) are only available internally for server-side game logic and cannot be accessed directly by clients.
+
 ## Usage Examples
 
-1. **Register a new user:**
+### 1. Complete User Registration and Game Setup
 ```bash
+# Register a new user
 curl -X POST http://localhost:8080/register \
   -H "Content-Type: application/json" \
   -d '{
@@ -266,29 +321,16 @@ curl -X POST http://localhost:8080/register \
     "email": "maria@example.com",
     "password": "password123"
   }'
-```
 
-2. **Verify email (after receiving code via email):**
-```bash
+# Verify email (after receiving code via email)
 curl -X POST http://localhost:8080/verify-email \
   -H "Content-Type: application/json" \
   -d '{
     "email": "maria@example.com",
     "validation_code": "A1B2C3"
   }'
-```
 
-3. **Resend validation code:**
-```bash
-curl -X POST http://localhost:8080/resend-code \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "maria@example.com"
-  }'
-```
-
-4. **Login:**
-```bash
+# Login
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
   -d '{
@@ -297,70 +339,14 @@ curl -X POST http://localhost:8080/login \
   }'
 ```
 
-5. **Validate token:**
+### 2. Game Operations (using token from login)
 ```bash
-curl -X GET http://localhost:8080/api/validate \
+# Get user game info (read-only)
+curl -X GET http://localhost:8080/api/user-info \
   -H "Authorization: Bearer <token_from_login>"
 ```
 
-## Email Integration
+**Important:** User game information (level, experience, money) is **read-only** and controlled entirely by server-side game logic. Clients can only:
+- View their current game information
 
-**Important:** The current implementation generates validation codes and stores them in the database, but **does not send emails**. To complete the email verification system, you need to:
-
-1. **Add email service integration** (SMTP, SendGrid, AWS SES, etc.)
-2. **Create email templates** for validation codes
-3. **Implement email sending** in the registration and resend code flows
-4. **Add email configuration** to environment variables
-
-### Example Email Integration (to be implemented):
-```go
-// In handlers/auth.go after user creation
-if err := emailService.SendValidationCode(user.Email, *user.ValidationCode); err != nil {
-    log.Printf("Failed to send validation code: %v", err)
-}
-```
-
-## Modular Architecture
-
-### Packages
-
-- **`models`**: Defines data structures (User, LoginRequest, etc.)
-- **`database`**: Handles database connection and operations
-- **`auth`**: Handles authentication logic and user management
-- **`handlers`**: Contains HTTP handlers for each endpoint
-- **`middleware`**: Middlewares for validation and request processing
-
-### Benefits of Modular Structure
-
-- **Separation of concerns**: Each package has a specific function
-- **Maintainability**: Easy to maintain and extend
-- **Testability**: Each component can be tested independently
-- **Reusability**: Packages can be reused in other projects
-- **Scalability**: Easy to add new features
-
-## Security Configuration
-
-- **JWT Secret**: Configure via `JWT_SECRET` environment variable
-- **Expiration**: Tokens expire in 24 hours by default
-- **Passwords**: Stored hashed with bcrypt
-- **Database**: Uses parameterized queries to prevent SQL injection
-- **Soft Delete**: Users are marked as deleted rather than permanently removed
-- **Input Validation**: Comprehensive validation for all user inputs
-- **Email Verification**: Secure validation codes with expiration
-- **Code Generation**: Cryptographically secure random codes
-
-## Production Considerations
-
-- Configure HTTPS
-- Use environment variables for all secrets
-- Implement rate limiting
-- Add appropriate logging
-- Set up proper monitoring and health checks
-- Implement proper error handling and logging
-- Use secure session management
-- Regular security audits and updates
-- Consider using connection pooling for database
-- Implement database migrations for schema changes
-- **Add email service integration** for complete verification workflow
-- **Implement rate limiting** for email verification endpoints
-- **Add monitoring** for email delivery success rates 
+All modifications to game stats (experience, money, level) happen automatically during gameplay through server-side logic to maintain complete game integrity and prevent any form of cheating. 

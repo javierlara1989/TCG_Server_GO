@@ -19,5 +19,8 @@ func SetupRoutes() *mux.Router {
 	protected.Use(middleware.AuthMiddleware)
 	protected.HandleFunc("/validate", ValidateTokenHandler).Methods("GET")
 
+	// User Info endpoint (read-only, requires authentication)
+	protected.HandleFunc("/user-info", GetUserInfoHandler).Methods("GET")
+
 	return r
 }
