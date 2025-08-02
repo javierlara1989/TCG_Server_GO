@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"tcg-server-go/auth"
+	"tcg-server-go/database"
 	"tcg-server-go/models"
 )
 
@@ -82,4 +83,75 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(models.LoginResponse{Token: token})
+}
+
+func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
+	var verifyReq models.VerifyEmailRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&verifyReq); err != nil {
+		http.Error(w, "Error decoding request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the request
+	validationErrors := ValidateStruct(&verifyReq)
+	if len(validationErrors) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ValidationResponse{Errors: validationErrors})
+		return
+	}
+
+	// Verify the email
+	user, err := database.VerifyEmail(verifyReq.Email, verifyReq.ValidationCode)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	response := models.VerifyEmailResponse{
+		Message: "Email verified successfully",
+		UserID:  user.ID,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func ResendCodeHandler(w http.ResponseWriter, r *http.Request) {
+	var resendReq models.ResendCodeRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&resendReq); err != nil {
+		http.Error(w, "Error decoding request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the request
+	validationErrors := ValidateStruct(&resendReq)
+	if len(validationErrors) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ValidationResponse{Errors: validationErrors})
+		return
+	}
+
+	// Resend validation code
+	err := database.ResendValidationCode(resendReq.Email)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	response := models.ResendCodeResponse{
+		Message: "Validation code sent successfully",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }

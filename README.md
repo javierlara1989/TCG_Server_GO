@@ -1,10 +1,11 @@
 # JWT Authentication Server in Go
 
-A modular Go server that handles JWT authentication with MariaDB database integration, organized in separate packages for better maintainability and production readiness.
+A modular Go server that handles JWT authentication with MariaDB database integration and email verification system, organized in separate packages for better maintainability and production readiness.
 
 ## Features
 
 - User registration with comprehensive validation
+- **Email verification system** with validation codes
 - Login endpoint that receives email and password
 - JWT token generation with expiration (24 hours)
 - Protected endpoint for token validation
@@ -15,6 +16,23 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 - **Soft delete** functionality for users
 - **Automatic table creation** on startup
 - **Advanced input validation** with custom rules
+- **Email verification workflow** with expiration and resend functionality
+
+## Email Verification System
+
+### How it Works
+1. **User Registration**: User registers with email, password, and name
+2. **Validation Code Generation**: System generates a 6-character random code
+3. **Email Sent**: Code is sent to user's email (implementation needed)
+4. **Email Verification**: User enters the code to verify their email
+5. **Account Activation**: Account is marked as verified
+
+### Security Features
+- **24-hour expiration** for validation codes
+- **One-time use** codes (deleted after verification)
+- **Case-insensitive** code matching
+- **Prevents duplicate verification** attempts
+- **Resend functionality** for expired codes
 
 ## Input Validation Rules
 
@@ -31,6 +49,11 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 ### Email
 - **Valid email format required**
 - **Must be unique** in the database
+
+### Validation Code
+- **6-character alphanumeric code**
+- **Case-insensitive** matching
+- **Required for email verification**
 
 ## Project Structure
 
@@ -49,7 +72,7 @@ TCG_Server_GO/
 │   ├── jwt.go           # JWT token handling
 │   └── users.go         # User management
 ├── handlers/            # HTTP handlers
-│   ├── auth.go          # Login and register handlers
+│   ├── auth.go          # Login, register, and email verification handlers
 │   ├── validate.go      # Validation handler and custom validation
 │   ├── health.go        # Health check handler
 │   └── routes.go        # Route configuration
@@ -67,6 +90,9 @@ CREATE TABLE users (
     nombre VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    validation_code VARCHAR(255) NULL,
+    validation_code_expires_at TIMESTAMP NULL,
+    validated_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
@@ -98,7 +124,7 @@ The server will start on port 8080 by default. You can change the port using the
 ## API Endpoints
 
 ### POST /register
-Registers a new user with validation.
+Registers a new user with validation. Generates a validation code that should be sent via email.
 
 **Request:**
 ```json
@@ -116,19 +142,58 @@ Registers a new user with validation.
 }
 ```
 
-**Validation Errors:**
+**Note:** The validation code is generated and stored in the database. You need to implement email sending functionality to send the code to the user.
+
+### POST /verify-email
+Verifies a user's email with the provided validation code.
+
+**Request:**
 ```json
 {
-  "errors": [
-    {
-      "field": "nombre",
-      "message": "Nombre must be at least 6 characters and contain only letters"
-    },
-    {
-      "field": "password",
-      "message": "Password must be at least 6 characters and contain both letters and numbers"
-    }
-  ]
+  "email": "juan@example.com",
+  "validation_code": "A1B2C3"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Email verified successfully",
+  "user_id": 1
+}
+```
+
+**Error Responses:**
+```json
+{
+  "error": "invalid validation code"
+}
+```
+```json
+{
+  "error": "validation code has expired"
+}
+```
+```json
+{
+  "error": "email already verified"
+}
+```
+
+### POST /resend-code
+Resends a new validation code to the user's email.
+
+**Request:**
+```json
+{
+  "email": "juan@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Validation code sent successfully"
 }
 ```
 
@@ -179,9 +244,11 @@ Checks server status.
 
 The application includes comprehensive database operations:
 
-- **CreateUser**: Create new users
+- **CreateUser**: Create new users with validation codes
 - **GetUserByEmail**: Retrieve user by email
 - **GetUserByID**: Retrieve user by ID
+- **VerifyEmail**: Verify user email with validation code
+- **ResendValidationCode**: Generate and send new validation code
 - **UpdateUser**: Update user information
 - **UpdatePassword**: Update user password
 - **SoftDeleteUser**: Mark user as deleted (soft delete)
@@ -201,7 +268,26 @@ curl -X POST http://localhost:8080/register \
   }'
 ```
 
-2. **Login:**
+2. **Verify email (after receiving code via email):**
+```bash
+curl -X POST http://localhost:8080/verify-email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "maria@example.com",
+    "validation_code": "A1B2C3"
+  }'
+```
+
+3. **Resend validation code:**
+```bash
+curl -X POST http://localhost:8080/resend-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "maria@example.com"
+  }'
+```
+
+4. **Login:**
 ```bash
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
@@ -211,10 +297,27 @@ curl -X POST http://localhost:8080/login \
   }'
 ```
 
-3. **Validate token:**
+5. **Validate token:**
 ```bash
 curl -X GET http://localhost:8080/api/validate \
   -H "Authorization: Bearer <token_from_login>"
+```
+
+## Email Integration
+
+**Important:** The current implementation generates validation codes and stores them in the database, but **does not send emails**. To complete the email verification system, you need to:
+
+1. **Add email service integration** (SMTP, SendGrid, AWS SES, etc.)
+2. **Create email templates** for validation codes
+3. **Implement email sending** in the registration and resend code flows
+4. **Add email configuration** to environment variables
+
+### Example Email Integration (to be implemented):
+```go
+// In handlers/auth.go after user creation
+if err := emailService.SendValidationCode(user.Email, *user.ValidationCode); err != nil {
+    log.Printf("Failed to send validation code: %v", err)
+}
 ```
 
 ## Modular Architecture
@@ -243,6 +346,8 @@ curl -X GET http://localhost:8080/api/validate \
 - **Database**: Uses parameterized queries to prevent SQL injection
 - **Soft Delete**: Users are marked as deleted rather than permanently removed
 - **Input Validation**: Comprehensive validation for all user inputs
+- **Email Verification**: Secure validation codes with expiration
+- **Code Generation**: Cryptographically secure random codes
 
 ## Production Considerations
 
@@ -255,4 +360,7 @@ curl -X GET http://localhost:8080/api/validate \
 - Use secure session management
 - Regular security audits and updates
 - Consider using connection pooling for database
-- Implement database migrations for schema changes 
+- Implement database migrations for schema changes
+- **Add email service integration** for complete verification workflow
+- **Implement rate limiting** for email verification endpoints
+- **Add monitoring** for email delivery success rates 

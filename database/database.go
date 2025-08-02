@@ -80,6 +80,9 @@ func CreateTables() error {
 		nombre VARCHAR(255) NOT NULL,
 		email VARCHAR(255) NOT NULL UNIQUE,
 		password VARCHAR(255) NOT NULL,
+		validation_code VARCHAR(255) NULL,
+		validation_code_expires_at TIMESTAMP NULL,
+		validated_at TIMESTAMP NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 		deleted_at TIMESTAMP NULL

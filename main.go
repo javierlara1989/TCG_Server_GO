@@ -32,6 +32,8 @@ func main() {
 	fmt.Printf("Server started on port %s\n", port)
 	fmt.Println("Available endpoints:")
 	fmt.Println("  POST /register - User registration")
+	fmt.Println("  POST /verify-email - Email verification")
+	fmt.Println("  POST /resend-code - Resend validation code")
 	fmt.Println("  POST /login - User authentication")
 	fmt.Println("  GET  /health - Server health check")
 	fmt.Println("  GET  /api/validate - Token validation (requires authentication)")
