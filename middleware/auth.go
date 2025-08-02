@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"tcg-server-go/auth"
@@ -28,8 +29,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.Header.Set("X-Username", claims.Username)
+		// Set user information in headers for downstream handlers
+		r.Header.Set("X-User-ID", strconv.Itoa(claims.UserID))
+		r.Header.Set("X-User-Email", claims.Email)
 
 		next.ServeHTTP(w, r)
 	})
-} 
+}

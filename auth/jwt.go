@@ -2,17 +2,41 @@ package auth
 
 import (
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"tcg-server-go/database"
 	"tcg-server-go/models"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var jwtSecret = []byte("mi_clave_secreta_muy_segura")
 
-func GenerateToken(username string) (string, error) {
+func init() {
+	// Try to get JWT secret from environment variable
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		jwtSecret = []byte(secret)
+	}
+}
+
+func GenerateToken(email string) (string, error) {
+	// Get user from database to get user ID
+	var userID int
+	if database.DB != nil {
+		user, err := database.GetUserByEmail(email)
+		if err != nil || user == nil {
+			return "", fmt.Errorf("user not found")
+		}
+		userID = user.ID
+	} else {
+		// Fallback for testing
+		userID = 1 // Default user ID for testing
+	}
+
 	claims := models.Claims{
-		Username: username,
+		UserID: userID,
+		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -43,4 +67,4 @@ func ValidateToken(tokenString string) (*models.Claims, error) {
 // SetJWTSecret allows changing the secret key (useful for testing)
 func SetJWTSecret(secret []byte) {
 	jwtSecret = secret
-} 
+}

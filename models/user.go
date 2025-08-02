@@ -1,10 +1,14 @@
 package models
 
-import "github.com/golang-jwt/jwt/v5"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
 
 type LoginResponse struct {
@@ -16,11 +20,24 @@ type ValidateResponse struct {
 }
 
 type Claims struct {
-	Username string `json:"username"`
+	UserID int    `json:"user_id"`
+	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 type User struct {
-	Username string `json:"username"`
-	Password string `json:"-"` // Excluded from JSON serialization
-} 
+	ID        int        `json:"id" db:"id"`
+	Nombre    string     `json:"nombre" db:"nombre" validate:"required,min=6,alpha"`
+	Email     string     `json:"email" db:"email" validate:"required,email"`
+	Password  string     `json:"-" db:"password" validate:"required,min=6,alphanum"` // Excluded from JSON serialization
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+}
+
+// CreateUserRequest represents the data needed to create a new user
+type CreateUserRequest struct {
+	Nombre   string `json:"nombre" validate:"required,min=6,alpha"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=6,alphanum"`
+}
