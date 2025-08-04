@@ -29,5 +29,10 @@ func SetupRoutes() *mux.Router {
 	r.HandleFunc("/cards/element/{element}", GetCardsByElementHandler).Methods("GET")
 	r.HandleFunc("/cards/{id}", GetCardByIDHandler).Methods("GET")
 
+	// Table endpoints (protected, requires authentication)
+	protected.HandleFunc("/tables", CreateTable).Methods("POST")
+	protected.HandleFunc("/tables", GetUserTables).Methods("GET")
+	protected.HandleFunc("/tables/{id}", UpdateTable).Methods("PUT")
+
 	return r
 }

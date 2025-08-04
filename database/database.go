@@ -118,6 +118,43 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createTablesTable := `
+	CREATE TABLE IF NOT EXISTS tables (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		category ENUM('S','A','B','C','D') NOT NULL,
+		privacy ENUM('private','public') NOT NULL,
+		password VARCHAR(10) NULL,
+		prize ENUM('money','card','aura') NOT NULL,
+		amount INT NULL,
+		winner BOOLEAN NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		finished_at TIMESTAMP NULL,
+		INDEX idx_category (category),
+		INDEX idx_privacy (privacy),
+		INDEX idx_prize (prize),
+		INDEX idx_amount (amount),
+		INDEX idx_winner (winner)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
+	createUserTablesTable := `
+	CREATE TABLE IF NOT EXISTS user_tables (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		user_id INT NOT NULL,
+		rival_id INT NULL,
+		table_id INT NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (rival_id) REFERENCES users(id) ON DELETE SET NULL,
+		FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE,
+		INDEX idx_user_id (user_id),
+		INDEX idx_rival_id (rival_id),
+		INDEX idx_table_id (table_id),
+		UNIQUE KEY unique_table_user (table_id, user_id),
+		UNIQUE KEY unique_table_rival (table_id, rival_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	// Create users table first
 	_, err := DB.Exec(createUsersTable)
 	if err != nil {
@@ -134,6 +171,18 @@ func CreateTables() error {
 	_, err = DB.Exec(createCardsTable)
 	if err != nil {
 		return fmt.Errorf("error creating cards table: %v", err)
+	}
+
+	// Create tables table
+	_, err = DB.Exec(createTablesTable)
+	if err != nil {
+		return fmt.Errorf("error creating tables table: %v", err)
+	}
+
+	// Create user_tables table
+	_, err = DB.Exec(createUserTablesTable)
+	if err != nil {
+		return fmt.Errorf("error creating user_tables table: %v", err)
 	}
 
 	log.Println("Database tables created successfully")
