@@ -155,6 +155,29 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createEffectsTable := `
+	CREATE TABLE IF NOT EXISTS effects (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		description TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		deleted_at TIMESTAMP NULL,
+		INDEX idx_deleted_at (deleted_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
+	createCardEffectsTable := `
+	CREATE TABLE IF NOT EXISTS card_effects (
+		card_id INT NOT NULL,
+		effect_id INT NOT NULL,
+		PRIMARY KEY (card_id, effect_id),
+		FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+		FOREIGN KEY (effect_id) REFERENCES effects(id) ON DELETE CASCADE,
+		INDEX idx_card_id (card_id),
+		INDEX idx_effect_id (effect_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	// Create users table first
 	_, err := DB.Exec(createUsersTable)
 	if err != nil {
@@ -183,6 +206,18 @@ func CreateTables() error {
 	_, err = DB.Exec(createUserTablesTable)
 	if err != nil {
 		return fmt.Errorf("error creating user_tables table: %v", err)
+	}
+
+	// Create effects table
+	_, err = DB.Exec(createEffectsTable)
+	if err != nil {
+		return fmt.Errorf("error creating effects table: %v", err)
+	}
+
+	// Create card_effects table
+	_, err = DB.Exec(createCardEffectsTable)
+	if err != nil {
+		return fmt.Errorf("error creating card_effects table: %v", err)
 	}
 
 	log.Println("Database tables created successfully")
