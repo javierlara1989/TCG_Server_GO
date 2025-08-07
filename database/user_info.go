@@ -559,3 +559,316 @@ func DeleteUserCardByUserAndCard(userID, cardID int) error {
 	_, err := DB.Exec(query, userID, cardID)
 	return err
 }
+
+// Deck Database Operations
+
+// CreateDeck creates a new deck record in the database
+func CreateDeck(deck *models.Deck) error {
+	query := `
+		INSERT INTO decks (user_id, name, valid, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+	`
+
+	now := time.Now()
+	deck.Valid = false // Default to false until validated
+
+	result, err := DB.Exec(query, deck.UserID, deck.Name, deck.Valid, now, now)
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	deck.ID = int(id)
+	return nil
+}
+
+// GetDeckByID retrieves a deck by its ID
+func GetDeckByID(id int) (*models.Deck, error) {
+	query := `
+		SELECT id, user_id, name, valid
+		FROM decks
+		WHERE id = ?
+	`
+
+	deck := &models.Deck{}
+	err := DB.QueryRow(query, id).Scan(
+		&deck.ID,
+		&deck.UserID,
+		&deck.Name,
+		&deck.Valid,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Deck not found
+		}
+		return nil, err
+	}
+
+	return deck, nil
+}
+
+// GetDecksByUserID retrieves all decks for a specific user
+func GetDecksByUserID(userID int) ([]models.Deck, error) {
+	query := `
+		SELECT id, user_id, name, valid
+		FROM decks
+		WHERE user_id = ?
+		ORDER BY name
+	`
+
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var decks []models.Deck
+	for rows.Next() {
+		deck := models.Deck{}
+		err := rows.Scan(
+			&deck.ID,
+			&deck.UserID,
+			&deck.Name,
+			&deck.Valid,
+		)
+		if err != nil {
+			return nil, err
+		}
+		decks = append(decks, deck)
+	}
+
+	return decks, nil
+}
+
+// UpdateDeckValidity updates a deck's validity status
+func UpdateDeckValidity(deckID int, valid bool) error {
+	query := `
+		UPDATE decks
+		SET valid = ?, updated_at = ?
+		WHERE id = ?
+	`
+
+	_, err := DB.Exec(query, valid, time.Now(), deckID)
+	return err
+}
+
+// DeleteDeck deletes a deck and all its cards
+func DeleteDeck(deckID int) error {
+	// Delete deck_cards first (cascade will handle this, but explicit for clarity)
+	query := `DELETE FROM deck_cards WHERE deck_id = ?`
+	_, err := DB.Exec(query, deckID)
+	if err != nil {
+		return err
+	}
+
+	// Delete the deck
+	query = `DELETE FROM decks WHERE id = ?`
+	_, err = DB.Exec(query, deckID)
+	return err
+}
+
+// AddCardToDeck adds a card to a deck
+func AddCardToDeck(deckID, cardID, number int) error {
+	query := `
+		INSERT INTO deck_cards (deck_id, card_id, number)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE number = VALUES(number)
+	`
+
+	_, err := DB.Exec(query, deckID, cardID, number)
+	return err
+}
+
+// GetDeckCards retrieves all cards in a deck
+func GetDeckCards(deckID int) ([]models.DeckCard, error) {
+	query := `
+		SELECT dc.deck_id, dc.card_id, dc.number,
+		       c.id, c.name, c.type, c.legend, c.element, c.created_at, c.updated_at
+		FROM deck_cards dc
+		JOIN cards c ON dc.card_id = c.id
+		WHERE dc.deck_id = ?
+		ORDER BY c.name
+	`
+
+	rows, err := DB.Query(query, deckID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deckCards []models.DeckCard
+	for rows.Next() {
+		deckCard := models.DeckCard{}
+		card := models.Card{}
+		err := rows.Scan(
+			&deckCard.DeckID,
+			&deckCard.CardID,
+			&deckCard.Number,
+			&card.ID,
+			&card.Name,
+			&card.Type,
+			&card.Legend,
+			&card.Element,
+			&card.CreatedAt,
+			&card.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		deckCard.Card = &card
+		deckCards = append(deckCards, deckCard)
+	}
+
+	return deckCards, nil
+}
+
+// ValidateDeckCreation checks if a user has all the required cards to create a deck
+func ValidateDeckCreation(userID int, cardIDs []int, cardCounts []int) (bool, error) {
+	if len(cardIDs) != len(cardCounts) {
+		return false, fmt.Errorf("card_ids and card_count arrays must have the same length")
+	}
+
+	// Check minimum 40 cards requirement
+	totalCards := 0
+	for _, count := range cardCounts {
+		totalCards += count
+	}
+	if totalCards < 40 {
+		return false, fmt.Errorf("deck must have at least 40 cards")
+	}
+
+	for i, cardID := range cardIDs {
+		requiredCount := cardCounts[i]
+
+		// Check if user has this card
+		userCard, err := GetUserCardByUserAndCard(userID, cardID)
+		if err != nil {
+			return false, err
+		}
+
+		if userCard == nil {
+			return false, nil // User doesn't have this card
+		}
+
+		if userCard.Amount < requiredCount {
+			return false, nil // User doesn't have enough of this card
+		}
+	}
+
+	return true, nil
+}
+
+// GetUserDeckLimit calculates the maximum number of decks a user can have based on their level
+func GetUserDeckLimit(userID int) (int, error) {
+	userInfo, err := GetUserInfoByUserID(userID)
+	if err != nil {
+		return 0, err
+	}
+	if userInfo == nil {
+		return 0, fmt.Errorf("user info not found")
+	}
+
+	// Base limit: 3 decks
+	baseLimit := 3
+
+	// Additional slots: level / 25 (rounded down)
+	additionalSlots := userInfo.Level / 25
+
+	return baseLimit + additionalSlots, nil
+}
+
+// CheckUserDeckLimit checks if a user can create more decks
+func CheckUserDeckLimit(userID int) (bool, int, error) {
+	// Get current number of decks
+	currentDecks, err := GetDecksByUserID(userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	// Get user's deck limit
+	deckLimit, err := GetUserDeckLimit(userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	canCreate := len(currentDecks) < deckLimit
+	return canCreate, deckLimit, nil
+}
+
+// CreateDeckWithValidation creates a deck and validates that the user has all required cards
+func CreateDeckWithValidation(userID int, name string, cardIDs []int, cardCounts []int) (*models.Deck, error) {
+	// Start transaction
+	tx, err := DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Check deck limit first
+	canCreate, deckLimit, err := CheckUserDeckLimit(userID)
+	if err != nil {
+		return nil, err
+	}
+	if !canCreate {
+		return nil, fmt.Errorf("deck limit reached: you can only have %d decks", deckLimit)
+	}
+
+	// Validate that user has all required cards
+	valid, err := ValidateDeckCreation(userID, cardIDs, cardCounts)
+	if err != nil {
+		return nil, err
+	}
+	if !valid {
+		return nil, fmt.Errorf("user does not have all required cards")
+	}
+
+	// Create the deck
+	deck := &models.Deck{
+		UserID: userID,
+		Name:   name,
+		Valid:  true, // Valid since we confirmed user has all cards
+	}
+
+	createDeckQuery := `
+		INSERT INTO decks (user_id, name, valid, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+	`
+
+	now := time.Now()
+	result, err := tx.Exec(createDeckQuery, deck.UserID, deck.Name, deck.Valid, now, now)
+	if err != nil {
+		return nil, err
+	}
+
+	deckID, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	deck.ID = int(deckID)
+
+	// Add cards to deck
+	for i, cardID := range cardIDs {
+		number := cardCounts[i]
+		addCardQuery := `
+			INSERT INTO deck_cards (deck_id, card_id, number)
+			VALUES (?, ?, ?)
+		`
+		_, err = tx.Exec(addCardQuery, deck.ID, cardID, number)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	return deck, nil
+}

@@ -343,6 +343,195 @@ Authorization: Bearer <token>
 
 **Important:** User card management (adding, removing, updating amounts) is handled internally by the server during gameplay. All card modifications are controlled by server-side logic to ensure game integrity and prevent any form of cheating or manipulation.
 
+### Deck Endpoints (All require authentication)
+
+#### GET /api/decks
+Retrieves all decks for the authenticated user.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "decks": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "name": "Fire Dragon Deck",
+      "valid": true
+    }
+  ],
+  "message": "Decks retrieved successfully"
+}
+```
+
+#### GET /api/decks/limit
+Retrieves deck limit information for the authenticated user.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "current_decks": 2,
+  "deck_limit": 3,
+  "user_level": 1,
+  "can_create": true,
+  "message": "Deck limit information retrieved successfully"
+}
+```
+
+#### POST /api/decks
+Creates a new deck. The deck will only be created if the user has all the required cards in their inventory.
+
+**Restrictions:**
+- **Minimum 40 cards**: Each deck must contain at least 40 cards
+- **Card ownership**: User must own all cards in the deck with sufficient quantities
+- **Deck limit**: Users can have 3 decks + (level / 25) additional decks (rounded down)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "Fire Dragon Deck",
+  "card_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "card_count": [4, 3, 2, 4, 3, 2, 4, 3, 2, 13]
+}
+```
+
+**Required Fields:**
+- `name`: Deck name (1-100 characters)
+- `card_ids`: Array of card IDs to include in the deck
+- `card_count`: Array of quantities for each card (must match card_ids length)
+
+**Response (201 Created):**
+```json
+{
+  "deck": {
+    "id": 1,
+    "user_id": 1,
+    "name": "Fire Dragon Deck",
+    "valid": true
+  },
+  "message": "Deck created successfully"
+}
+```
+
+**Error Responses (400 Bad Request):**
+```json
+{
+  "error": "Cannot create deck: you do not have all the required cards"
+}
+```
+```json
+{
+  "error": "Cannot create deck: deck must have at least 40 cards"
+}
+```
+```json
+{
+  "error": "Cannot create deck: deck limit reached: you can only have 3 decks"
+}
+```
+
+#### GET /api/decks/{id}
+Retrieves a specific deck by ID.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "deck": {
+    "id": 1,
+    "user_id": 1,
+    "name": "Fire Dragon Deck",
+    "valid": true
+  },
+  "message": "Deck retrieved successfully"
+}
+```
+
+#### GET /api/decks/{id}/cards
+Retrieves a deck with all its cards.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "deck_with_cards": {
+    "deck": {
+      "id": 1,
+      "user_id": 1,
+      "name": "Fire Dragon Deck",
+      "valid": true
+    },
+    "cards": [
+      {
+        "deck_id": 1,
+        "card_id": 1,
+        "number": 2,
+        "card": {
+          "id": 1,
+          "name": "Dragon Warrior",
+          "type": "Monster",
+          "legend": "A powerful dragon warrior with fire abilities",
+          "element": "Fire",
+          "created_at": "2024-01-15T10:30:00Z",
+          "updated_at": "2024-01-15T10:30:00Z"
+        }
+      }
+    ]
+  },
+  "message": "Deck with cards retrieved successfully"
+}
+```
+
+#### DELETE /api/decks/{id}
+Deletes a deck and all its cards.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Deck deleted successfully"
+}
+```
+
+**Important:** Deck creation is validated to ensure the user has all required cards in their inventory. The `valid` field indicates whether the deck can be used in gameplay.
+
+**Deck System Rules:**
+- **Minimum cards**: Each deck must contain at least 40 cards
+- **Card ownership**: Users can only include cards they own in sufficient quantities
+- **Deck limit**: Base limit of 3 decks + 1 additional deck per 25 levels
+  - Level 1-24: 3 decks
+  - Level 25-49: 4 decks
+  - Level 50-74: 5 decks
+  - Level 75-99: 6 decks
+  - And so on...
+
 ### Other Endpoints
 
 #### GET /api/validate
@@ -437,6 +626,37 @@ CREATE TABLE user_cards (
     INDEX idx_user_id (user_id),
     INDEX idx_card_id (card_id),
     UNIQUE KEY unique_user_card (user_id, card_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### Decks Table
+
+```sql
+CREATE TABLE decks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    valid BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_valid (valid)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### Deck Cards Table
+
+```sql
+CREATE TABLE deck_cards (
+    deck_id INT NOT NULL,
+    card_id INT NOT NULL,
+    number INT NOT NULL DEFAULT 1,
+    PRIMARY KEY (deck_id, card_id),
+    FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+    INDEX idx_deck_id (deck_id),
+    INDEX idx_card_id (card_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 

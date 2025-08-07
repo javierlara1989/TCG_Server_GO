@@ -26,6 +26,14 @@ func SetupRoutes() *mux.Router {
 	protected.HandleFunc("/user-cards", GetUserCardsHandler).Methods("GET")
 	protected.HandleFunc("/user-cards/{id}", GetUserCardHandler).Methods("GET")
 
+	// Deck endpoints (requires authentication)
+	protected.HandleFunc("/decks", GetDecksHandler).Methods("GET")
+	protected.HandleFunc("/decks", CreateDeckHandler).Methods("POST")
+	protected.HandleFunc("/decks/limit", GetDeckLimitHandler).Methods("GET")
+	protected.HandleFunc("/decks/{id}", GetDeckHandler).Methods("GET")
+	protected.HandleFunc("/decks/{id}/cards", GetDeckWithCardsHandler).Methods("GET")
+	protected.HandleFunc("/decks/{id}", DeleteDeckHandler).Methods("DELETE")
+
 	// Card endpoints (public access for reading only)
 	r.HandleFunc("/cards", GetAllCardsHandler).Methods("GET")
 	r.HandleFunc("/cards/search", SearchCardsHandler).Methods("GET")

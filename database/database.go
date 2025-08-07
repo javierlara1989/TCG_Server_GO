@@ -134,6 +134,33 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createDecksTable := `
+	CREATE TABLE IF NOT EXISTS decks (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		user_id INT NOT NULL,
+		name VARCHAR(100) NOT NULL,
+		valid BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		INDEX idx_user_id (user_id),
+		INDEX idx_valid (valid)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
+	createDeckCardsTable := `
+	CREATE TABLE IF NOT EXISTS deck_cards (
+		deck_id INT NOT NULL,
+		card_id INT NOT NULL,
+		number INT NOT NULL DEFAULT 1,
+		PRIMARY KEY (deck_id, card_id),
+		FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE,
+		FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+		INDEX idx_deck_id (deck_id),
+		INDEX idx_card_id (card_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	createTablesTable := `
 	CREATE TABLE IF NOT EXISTS tables (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -217,6 +244,18 @@ func CreateTables() error {
 	_, err = DB.Exec(createUserCardsTable)
 	if err != nil {
 		return fmt.Errorf("error creating user_cards table: %v", err)
+	}
+
+	// Create decks table
+	_, err = DB.Exec(createDecksTable)
+	if err != nil {
+		return fmt.Errorf("error creating decks table: %v", err)
+	}
+
+	// Create deck_cards table
+	_, err = DB.Exec(createDeckCardsTable)
+	if err != nil {
+		return fmt.Errorf("error creating deck_cards table: %v", err)
 	}
 
 	// Create tables table
