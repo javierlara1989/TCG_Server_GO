@@ -22,6 +22,10 @@ func SetupRoutes() *mux.Router {
 	// User Info endpoint (read-only, requires authentication)
 	protected.HandleFunc("/user-info", GetUserInfoHandler).Methods("GET")
 
+	// User Cards endpoints (requires authentication)
+	protected.HandleFunc("/user-cards", GetUserCardsHandler).Methods("GET")
+	protected.HandleFunc("/user-cards/{id}", GetUserCardHandler).Methods("GET")
+
 	// Card endpoints (public access for reading only)
 	r.HandleFunc("/cards", GetAllCardsHandler).Methods("GET")
 	r.HandleFunc("/cards/search", SearchCardsHandler).Methods("GET")

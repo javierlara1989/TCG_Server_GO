@@ -38,6 +38,8 @@ func main() {
 	fmt.Println("  GET  /health - Server health check")
 	fmt.Println("  GET  /api/validate - Token validation (requires authentication)")
 	fmt.Println("  GET  /api/user-info - Get user game info (requires authentication)")
+	fmt.Println("  GET  /api/user-cards - Get user's card inventory (requires authentication)")
+	fmt.Println("  GET  /api/user-cards/{id} - Get specific user card (requires authentication)")
 	fmt.Println("")
 	fmt.Println("Card Management (Read-only):")
 	fmt.Println("  GET  /cards - Get all cards")

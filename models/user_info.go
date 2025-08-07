@@ -35,3 +35,26 @@ type UserInfoResponse struct {
 	UserInfo *UserInfo `json:"user_info"`
 	Message  string    `json:"message"`
 }
+
+// UserCard represents a user's card inventory
+type UserCard struct {
+	ID        int       `json:"id" db:"id"`
+	UserID    int       `json:"user_id" db:"user_id"`
+	CardID    int       `json:"card_id" db:"card_id"`
+	Amount    int       `json:"amount" db:"amount"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	Card      *Card     `json:"card,omitempty"`
+}
+
+// UserCardResponse represents the response for user card operations
+type UserCardResponse struct {
+	UserCard *UserCard `json:"user_card"`
+	Message  string    `json:"message"`
+}
+
+// UserCardsResponse represents the response for multiple user cards
+type UserCardsResponse struct {
+	UserCards []UserCard `json:"user_cards"`
+	Message   string     `json:"message"`
+}

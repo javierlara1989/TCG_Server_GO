@@ -358,3 +358,204 @@ func CreateDefaultUserInfo(userID int) (*models.UserInfo, error) {
 
 	return defaultUserInfo, CreateUserInfo(defaultUserInfo)
 }
+
+// User Cards Database Operations
+
+// CreateUserCard creates a new user card record in the database
+func CreateUserCard(userCard *models.UserCard) error {
+	query := `
+		INSERT INTO user_cards (user_id, card_id, amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+	`
+
+	now := time.Now()
+	userCard.CreatedAt = now
+	userCard.UpdatedAt = now
+
+	result, err := DB.Exec(query, userCard.UserID, userCard.CardID, userCard.Amount, userCard.CreatedAt, userCard.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	userCard.ID = int(id)
+	return nil
+}
+
+// GetUserCardByID retrieves a user card by its ID
+func GetUserCardByID(id int) (*models.UserCard, error) {
+	query := `
+		SELECT uc.id, uc.user_id, uc.card_id, uc.amount, uc.created_at, uc.updated_at,
+		       c.id, c.name, c.type, c.legend, c.element, c.created_at, c.updated_at
+		FROM user_cards uc
+		JOIN cards c ON uc.card_id = c.id
+		WHERE uc.id = ?
+	`
+
+	userCard := &models.UserCard{}
+	card := &models.Card{}
+	err := DB.QueryRow(query, id).Scan(
+		&userCard.ID,
+		&userCard.UserID,
+		&userCard.CardID,
+		&userCard.Amount,
+		&userCard.CreatedAt,
+		&userCard.UpdatedAt,
+		&card.ID,
+		&card.Name,
+		&card.Type,
+		&card.Legend,
+		&card.Element,
+		&card.CreatedAt,
+		&card.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // User card not found
+		}
+		return nil, err
+	}
+
+	userCard.Card = card
+	return userCard, nil
+}
+
+// GetUserCardByUserAndCard retrieves a user card by user ID and card ID
+func GetUserCardByUserAndCard(userID, cardID int) (*models.UserCard, error) {
+	query := `
+		SELECT uc.id, uc.user_id, uc.card_id, uc.amount, uc.created_at, uc.updated_at,
+		       c.id, c.name, c.type, c.legend, c.element, c.created_at, c.updated_at
+		FROM user_cards uc
+		JOIN cards c ON uc.card_id = c.id
+		WHERE uc.user_id = ? AND uc.card_id = ?
+	`
+
+	userCard := &models.UserCard{}
+	card := &models.Card{}
+	err := DB.QueryRow(query, userID, cardID).Scan(
+		&userCard.ID,
+		&userCard.UserID,
+		&userCard.CardID,
+		&userCard.Amount,
+		&userCard.CreatedAt,
+		&userCard.UpdatedAt,
+		&card.ID,
+		&card.Name,
+		&card.Type,
+		&card.Legend,
+		&card.Element,
+		&card.CreatedAt,
+		&card.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // User card not found
+		}
+		return nil, err
+	}
+
+	userCard.Card = card
+	return userCard, nil
+}
+
+// GetUserCardsByUserID retrieves all cards for a specific user
+func GetUserCardsByUserID(userID int) ([]models.UserCard, error) {
+	query := `
+		SELECT uc.id, uc.user_id, uc.card_id, uc.amount, uc.created_at, uc.updated_at,
+		       c.id, c.name, c.type, c.legend, c.element, c.created_at, c.updated_at
+		FROM user_cards uc
+		JOIN cards c ON uc.card_id = c.id
+		WHERE uc.user_id = ?
+		ORDER BY c.name
+	`
+
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userCards []models.UserCard
+	for rows.Next() {
+		userCard := models.UserCard{}
+		card := models.Card{}
+		err := rows.Scan(
+			&userCard.ID,
+			&userCard.UserID,
+			&userCard.CardID,
+			&userCard.Amount,
+			&userCard.CreatedAt,
+			&userCard.UpdatedAt,
+			&card.ID,
+			&card.Name,
+			&card.Type,
+			&card.Legend,
+			&card.Element,
+			&card.CreatedAt,
+			&card.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		userCard.Card = &card
+		userCards = append(userCards, userCard)
+	}
+
+	return userCards, nil
+}
+
+// UpdateUserCard updates a user card's amount
+func UpdateUserCard(userCard *models.UserCard) error {
+	query := `
+		UPDATE user_cards
+		SET amount = ?, updated_at = ?
+		WHERE id = ?
+	`
+
+	userCard.UpdatedAt = time.Now()
+	_, err := DB.Exec(query, userCard.Amount, userCard.UpdatedAt, userCard.ID)
+	return err
+}
+
+// AddOrUpdateUserCard adds a new user card or updates the amount if it already exists
+func AddOrUpdateUserCard(userID, cardID, amount int) error {
+	// First, try to get existing user card
+	existingCard, err := GetUserCardByUserAndCard(userID, cardID)
+	if err != nil {
+		return err
+	}
+
+	if existingCard != nil {
+		// Update existing card
+		existingCard.Amount += amount
+		return UpdateUserCard(existingCard)
+	} else {
+		// Create new user card
+		userCard := &models.UserCard{
+			UserID: userID,
+			CardID: cardID,
+			Amount: amount,
+		}
+		return CreateUserCard(userCard)
+	}
+}
+
+// DeleteUserCard deletes a user card by ID
+func DeleteUserCard(id int) error {
+	query := `DELETE FROM user_cards WHERE id = ?`
+	_, err := DB.Exec(query, id)
+	return err
+}
+
+// DeleteUserCardByUserAndCard deletes a user card by user ID and card ID
+func DeleteUserCardByUserAndCard(userID, cardID int) error {
+	query := `DELETE FROM user_cards WHERE user_id = ? AND card_id = ?`
+	_, err := DB.Exec(query, userID, cardID)
+	return err
+}

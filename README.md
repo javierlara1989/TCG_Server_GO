@@ -273,6 +273,76 @@ Authorization: Bearer <token>
 
 **Important:** User game information (level, experience, money) is **read-only** and can only be modified through server-side game logic during actual gameplay. This ensures complete game integrity and prevents any form of cheating or manipulation.
 
+### User Cards Endpoints (All require authentication)
+
+#### GET /api/user-cards
+Retrieves all cards in the authenticated user's inventory.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "user_cards": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "card_id": 1,
+      "amount": 3,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "card": {
+        "id": 1,
+        "name": "Dragon Warrior",
+        "type": "Monster",
+        "legend": "A powerful dragon warrior with fire abilities",
+        "element": "Fire",
+        "created_at": "2024-01-15T10:30:00Z",
+        "updated_at": "2024-01-15T10:30:00Z"
+      }
+    }
+  ],
+  "message": "User cards retrieved successfully"
+}
+```
+
+#### GET /api/user-cards/{id}
+Retrieves a specific card from the user's inventory by card ID.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "user_card": {
+    "id": 1,
+    "user_id": 1,
+    "card_id": 1,
+    "amount": 3,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z",
+    "card": {
+      "id": 1,
+      "name": "Dragon Warrior",
+      "type": "Monster",
+      "legend": "A powerful dragon warrior with fire abilities",
+      "element": "Fire",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  },
+  "message": "User card retrieved successfully"
+}
+```
+
+**Important:** User card management (adding, removing, updating amounts) is handled internally by the server during gameplay. All card modifications are controlled by server-side logic to ensure game integrity and prevent any form of cheating or manipulation.
+
 ### Other Endpoints
 
 #### GET /api/validate
@@ -349,6 +419,24 @@ CREATE TABLE cards (
     INDEX idx_type (type),
     INDEX idx_element (element),
     INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### User Cards Table
+
+```sql
+CREATE TABLE user_cards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    card_id INT NOT NULL,
+    amount INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_card_id (card_id),
+    UNIQUE KEY unique_user_card (user_id, card_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 

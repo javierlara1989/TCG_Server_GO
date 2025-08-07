@@ -118,6 +118,22 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createUserCardsTable := `
+	CREATE TABLE IF NOT EXISTS user_cards (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		user_id INT NOT NULL,
+		card_id INT NOT NULL,
+		amount INT NOT NULL DEFAULT 1,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+		INDEX idx_user_id (user_id),
+		INDEX idx_card_id (card_id),
+		UNIQUE KEY unique_user_card (user_id, card_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	createTablesTable := `
 	CREATE TABLE IF NOT EXISTS tables (
 		id INT AUTO_INCREMENT PRIMARY KEY,
@@ -195,6 +211,12 @@ func CreateTables() error {
 	_, err = DB.Exec(createCardsTable)
 	if err != nil {
 		return fmt.Errorf("error creating cards table: %v", err)
+	}
+
+	// Create user_cards table
+	_, err = DB.Exec(createUserCardsTable)
+	if err != nil {
+		return fmt.Errorf("error creating user_cards table: %v", err)
 	}
 
 	// Create tables table
