@@ -358,3 +358,70 @@ func GetDeckLimitHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
+
+// UpdateDeckHandler updates a deck
+func UpdateDeckHandler(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userID := r.Context().Value("user_id").(int)
+
+	// Get deck ID from URL parameters
+	vars := mux.Vars(r)
+	deckIDStr := vars["id"]
+	deckID, err := strconv.Atoi(deckIDStr)
+	if err != nil {
+		http.Error(w, "Invalid deck ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var req models.UpdateDeckRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate request
+	if err := validate.Struct(req); err != nil {
+		http.Error(w, fmt.Sprintf("Validation error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Validate that card_ids and card_count arrays have the same length
+	if len(req.CardIDs) != len(req.CardCount) {
+		http.Error(w, "card_ids and card_count arrays must have the same length", http.StatusBadRequest)
+		return
+	}
+
+	// Update deck
+	deck, err := database.UpdateDeck(deckID, userID, req.Name, req.CardIDs, req.CardCount)
+	if err != nil {
+		// Handle specific error cases
+		if strings.Contains(err.Error(), "deck not found") {
+			http.Error(w, "Deck not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "deck does not belong to user") {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+		if strings.Contains(err.Error(), "cannot update deck while in an active game") {
+			http.Error(w, "Cannot update deck while in an active game", http.StatusConflict)
+			return
+		}
+		if strings.Contains(err.Error(), "invalid deck composition") {
+			http.Error(w, "Invalid deck composition", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Error updating deck: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := models.DeckResponse{
+		Deck:    deck,
+		Message: "Deck updated successfully",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}

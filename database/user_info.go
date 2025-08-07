@@ -872,3 +872,111 @@ func CreateDeckWithValidation(userID int, name string, cardIDs []int, cardCounts
 
 	return deck, nil
 }
+
+// IsUserInActiveGame checks if a user is currently in an active game
+func IsUserInActiveGame(userID int) (bool, error) {
+	query := `
+		SELECT COUNT(*) 
+		FROM user_tables ut
+		JOIN tables t ON ut.table_id = t.id
+		WHERE (ut.user_id = ? OR ut.rival_id = ?) 
+		AND t.finished_at IS NULL
+	`
+
+	var count int
+	err := DB.QueryRow(query, userID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// UpdateDeck updates a deck with validation
+// Validates that the deck belongs to the logged user and user is not in an active game
+func UpdateDeck(deckID int, userID int, name string, cardIDs []int, cardCounts []int) (*models.Deck, error) {
+	// First, check if the deck exists and belongs to the user
+	deck, err := GetDeckByID(deckID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting deck: %v", err)
+	}
+	if deck == nil {
+		return nil, fmt.Errorf("deck not found")
+	}
+	if deck.UserID != userID {
+		return nil, fmt.Errorf("deck does not belong to user")
+	}
+
+	// Check if user is in an active game
+	inActiveGame, err := IsUserInActiveGame(userID)
+	if err != nil {
+		return nil, fmt.Errorf("error checking active game: %v", err)
+	}
+	if inActiveGame {
+		return nil, fmt.Errorf("cannot update deck while in an active game")
+	}
+
+	// Validate the new deck composition
+	valid, err := ValidateDeckCreation(userID, cardIDs, cardCounts)
+	if err != nil {
+		return nil, fmt.Errorf("error validating deck: %v", err)
+	}
+	if !valid {
+		return nil, fmt.Errorf("invalid deck composition")
+	}
+
+	// Start transaction
+	tx, err := DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("error starting transaction: %v", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update deck name
+	updateQuery := `
+		UPDATE decks 
+		SET name = ?, valid = ?, updated_at = ?
+		WHERE id = ?
+	`
+	_, err = tx.Exec(updateQuery, name, valid, time.Now(), deckID)
+	if err != nil {
+		return nil, fmt.Errorf("error updating deck: %v", err)
+	}
+
+	// Clear existing cards from deck
+	clearQuery := `DELETE FROM deck_cards WHERE deck_id = ?`
+	_, err = tx.Exec(clearQuery, deckID)
+	if err != nil {
+		return nil, fmt.Errorf("error clearing deck cards: %v", err)
+	}
+
+	// Add new cards to deck
+	for i, cardID := range cardIDs {
+		count := cardCounts[i]
+		if count > 0 {
+			addQuery := `INSERT INTO deck_cards (deck_id, card_id, number) VALUES (?, ?, ?)`
+			_, err = tx.Exec(addQuery, deckID, cardID, count)
+			if err != nil {
+				return nil, fmt.Errorf("error adding card to deck: %v", err)
+			}
+		}
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("error committing transaction: %v", err)
+	}
+
+	// Return updated deck
+	updatedDeck, err := GetDeckByID(deckID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting updated deck: %v", err)
+	}
+
+	return updatedDeck, nil
+}

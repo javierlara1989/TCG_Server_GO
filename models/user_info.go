@@ -74,6 +74,13 @@ type CreateDeckRequest struct {
 	CardCount []int  `json:"card_count" validate:"required,min=1"`
 }
 
+// UpdateDeckRequest represents the data needed to update a deck
+type UpdateDeckRequest struct {
+	Name      string `json:"name" validate:"required,min=1,max=100"`
+	CardIDs   []int  `json:"card_ids" validate:"required,min=1"`
+	CardCount []int  `json:"card_count" validate:"required,min=1"`
+}
+
 // DeckResponse represents the response for deck operations
 type DeckResponse struct {
 	Deck    *Deck  `json:"deck"`

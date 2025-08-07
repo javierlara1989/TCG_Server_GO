@@ -93,7 +93,7 @@ func AddUser(user *models.User) error {
 // CreateUser creates a new user with validation
 func CreateUser(req *models.CreateUserRequest) (*models.User, error) {
 	user := &models.User{
-		Nombre:   req.Nombre,
+		Name:     req.Name,
 		Email:    req.Email,
 		Password: req.Password,
 	}
