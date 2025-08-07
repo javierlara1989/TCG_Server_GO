@@ -1,35 +1,36 @@
-# Tablas API Documentation
+# Tables API Documentation
 
-## Descripción General
+## General Description
 
-El sistema de tablas permite a los usuarios crear mesas de juego para partidas de TCG. Cada tabla puede ser pública o privada, y puede tener diferentes categorías y premios.
+The table system allows users to create game tables for TCG matches. Each table can be public or private, and can have different categories and prizes.
 
-## Modelos de Datos
+## Data Models
 
 ### Table
-- `id`: Identificador único de la tabla
-- `category`: Categoría de la tabla (S, A, B, C, D)
-- `privacy`: Privacidad de la tabla (private, public)
-- `password`: Contraseña numérica opcional (máximo 10 dígitos)
-- `prize`: Tipo de premio (money, card, aura)
-- `amount`: Cantidad apostada (dinero o cartas) - entero opcional
-- `winner`: Indica si hay un ganador (TRUE, FALSE, NULL)
-- `created_at`: Fecha de creación
-- `updated_at`: Fecha de última actualización
-- `finished_at`: Fecha de finalización (opcional)
+- `id`: Unique identifier for the table
+- `category`: Table category (S, A, B, C, D)
+- `privacy`: Table privacy (private, public)
+- `password`: Optional numeric password (maximum 10 digits)
+- `prize`: Prize type (money, card, aura)
+- `amount`: Bet amount (money or cards) - optional integer
+- `winner`: Indicates if there's a winner (TRUE, FALSE, NULL)
+- `created_at`: Creation date
+- `updated_at`: Last update date
+- `finished_at`: Completion date (optional)
 
 ### UserTable
-- `id`: Identificador único de la asociación
-- `user_id`: ID del usuario propietario de la tabla
-- `rival_id`: ID del rival (NULL si está esperando rival)
-- `table_id`: ID de la tabla asociada
+- `id`: Unique identifier for the association
+- `user_id`: ID of the table owner user
+- `rival_id`: ID of the rival (NULL if waiting for rival)
+- `table_id`: ID of the associated table
+- `time`: Time elapsed in the match in seconds (integer)
 
 ## Endpoints
 
-### 1. Crear Tabla
+### 1. Create Table
 **POST** `/api/tables`
 
-Crea una nueva tabla y la asocia al usuario autenticado. La tabla se crea en estado de espera (sin rival).
+Creates a new table and associates it with the authenticated user. The table is created in waiting state (without rival).
 
 #### Headers
 ```
@@ -48,14 +49,14 @@ Content-Type: application/json
 }
 ```
 
-#### Campos Requeridos
-- `category`: Debe ser S, A, B, C, o D
-- `privacy`: Debe ser "private" o "public"
-- `prize`: Debe ser "money", "card", o "aura"
+#### Required Fields
+- `category`: Must be S, A, B, C, or D
+- `privacy`: Must be "private" or "public"
+- `prize`: Must be "money", "card", or "aura"
 
-#### Campos Opcionales
-- `password`: Contraseña numérica (máximo 10 dígitos)
-- `amount`: Cantidad apostada (número entero positivo)
+#### Optional Fields
+- `password`: Numeric password (maximum 10 digits)
+- `amount`: Bet amount (positive integer)
 
 #### Response (201 Created)
 ```json
@@ -65,10 +66,10 @@ Content-Type: application/json
 }
 ```
 
-### 2. Obtener Tablas del Usuario
+### 2. Get User Tables
 **GET** `/api/tables`
 
-Obtiene todas las tablas asociadas al usuario autenticado (como propietario o rival).
+Gets all tables associated with the authenticated user (as owner or rival).
 
 #### Headers
 ```
@@ -84,7 +85,8 @@ Authorization: Bearer <token>
       "user_id": 1,
       "rival_id": null,
       "table_id": 1,
-             "table": {
+      "time": 0,
+      "table": {
          "id": 1,
          "category": "A",
          "privacy": "public",
@@ -96,8 +98,8 @@ Authorization: Bearer <token>
          "updated_at": "2024-01-01T12:00:00Z",
          "finished_at": null
        },
-      "user_name": "Usuario1",
-      "user_email": "usuario1@example.com",
+      "user_name": "User1",
+      "user_email": "user1@example.com",
       "rival_name": null,
       "rival_email": null
     }
@@ -105,12 +107,12 @@ Authorization: Bearer <token>
 }
 ```
 
-### 3. Actualizar Tabla
+### 3. Update Table
 **PUT** `/api/tables/{id}`
 
-Actualiza los parámetros de una tabla. Solo se puede actualizar si:
-- El usuario es el propietario de la tabla
-- La tabla está esperando rival (rival_id es NULL)
+Updates table parameters. Can only be updated if:
+- The user is the table owner
+- The table is waiting for rival (rival_id is NULL)
 
 #### Headers
 ```
@@ -129,12 +131,12 @@ Content-Type: application/json
 }
 ```
 
-#### Campos Modificables
-- `category`: Nueva categoría (S, A, B, C, D)
-- `privacy`: Nueva privacidad (private, public)
-- `password`: Nueva contraseña (numérica, máximo 10 dígitos)
-- `prize`: Nuevo premio (money, card, aura)
-- `amount`: Nueva cantidad apostada (número entero positivo)
+#### Modifiable Fields
+- `category`: New category (S, A, B, C, D)
+- `privacy`: New privacy (private, public)
+- `password`: New password (numeric, maximum 10 digits)
+- `prize`: New prize (money, card, aura)
+- `amount`: New bet amount (positive integer)
 
 #### Response (200 OK)
 ```json
@@ -144,51 +146,80 @@ Content-Type: application/json
 }
 ```
 
-## Validaciones
+### 4. Update Table Time
+**PUT** `/api/tables/{id}/time`
 
-### Categorías Válidas
+Updates the time elapsed in the match for a specific table. Can only be updated if the user is the table owner.
+
+#### Headers
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+#### Request Body
+```json
+{
+  "time": 120
+}
+```
+
+#### Required Fields
+- `time`: Time elapsed in seconds (non-negative integer)
+
+#### Response (200 OK)
+```json
+{
+  "message": "Table time updated successfully",
+  "time": 120
+}
+```
+
+## Validations
+
+### Valid Categories
 - S, A, B, C, D
 
-### Privacidad Válida
+### Valid Privacy
 - private, public
 
-### Premios Válidos
+### Valid Prizes
 - money, card, aura
 
-### Contraseña
-- Máximo 10 caracteres
-- Solo dígitos numéricos (0-9)
-- Opcional
+### Password
+- Maximum 10 characters
+- Only numeric digits (0-9)
+- Optional
 
-### Cantidad (Amount)
-- Número entero positivo
-- Representa la cantidad de dinero o cartas apostadas
-- Opcional
+### Amount
+- Positive integer
+- Represents the amount of money or cards bet
+- Optional
 
-## Estados de la Tabla
+## Table States
 
-1. **Esperando Rival**: `rival_id` es NULL
-   - Se pueden modificar los parámetros
-   - La tabla está disponible para que otros usuarios se unan
+1. **Waiting for Rival**: `rival_id` is NULL
+   - Parameters can be modified
+   - The table is available for other users to join
 
-2. **Con Rival**: `rival_id` tiene un valor
-   - No se pueden modificar los parámetros
-   - La partida puede comenzar
+2. **With Rival**: `rival_id` has a value
+   - Parameters cannot be modified
+   - The match can begin
 
-3. **Finalizada**: `finished_at` tiene un valor
-   - `winner` indica el resultado
-   - La tabla está cerrada
+3. **Finished**: `finished_at` has a value
+   - `winner` indicates the result
+   - The table is closed
 
-## Códigos de Error
+## Error Codes
 
-- `400 Bad Request`: Datos de entrada inválidos
-- `401 Unauthorized`: Token de autenticación inválido o faltante
-- `403 Forbidden`: No tienes permisos para realizar la acción
-- `500 Internal Server Error`: Error interno del servidor
+- `400 Bad Request`: Invalid input data
+- `401 Unauthorized`: Invalid or missing authentication token
+- `403 Forbidden`: You don't have permission to perform the action
+- `500 Internal Server Error`: Internal server error
 
-## Ejemplos de Uso
+## Usage Examples
 
-### Crear una tabla pública
+### Create a public table
 ```bash
 curl -X POST http://localhost:8080/api/tables \
   -H "Authorization: Bearer <token>" \
@@ -201,7 +232,7 @@ curl -X POST http://localhost:8080/api/tables \
   }'
 ```
 
-### Crear una tabla privada con contraseña
+### Create a private table with password
 ```bash
 curl -X POST http://localhost:8080/api/tables \
   -H "Authorization: Bearer <token>" \
@@ -215,7 +246,7 @@ curl -X POST http://localhost:8080/api/tables \
   }'
 ```
 
-### Actualizar parámetros de una tabla
+### Update table parameters
 ```bash
 curl -X PUT http://localhost:8080/api/tables/1 \
   -H "Authorization: Bearer <token>" \
@@ -225,5 +256,15 @@ curl -X PUT http://localhost:8080/api/tables/1 \
     "privacy": "private",
     "password": "9999",
     "amount": 2000
+  }'
+```
+
+### Update table time
+```bash
+curl -X PUT http://localhost:8080/api/tables/1/time \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "time": 180
   }'
 ``` 

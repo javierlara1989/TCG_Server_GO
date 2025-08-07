@@ -33,6 +33,7 @@ func SetupRoutes() *mux.Router {
 	protected.HandleFunc("/tables", CreateTable).Methods("POST")
 	protected.HandleFunc("/tables", GetUserTables).Methods("GET")
 	protected.HandleFunc("/tables/{id}", UpdateTable).Methods("PUT")
+	protected.HandleFunc("/tables/{id}/time", UpdateUserTableTime).Methods("PUT")
 
 	return r
 }

@@ -77,7 +77,7 @@ func CreateTables() error {
 	createUsersTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INT AUTO_INCREMENT PRIMARY KEY,
-		nombre VARCHAR(255) NOT NULL,
+		name VARCHAR(255) NOT NULL,
 		email VARCHAR(255) NOT NULL UNIQUE,
 		password VARCHAR(255) NOT NULL,
 		validation_code VARCHAR(255) NULL,
@@ -144,6 +144,7 @@ func CreateTables() error {
 		user_id INT NOT NULL,
 		rival_id INT NULL,
 		table_id INT NOT NULL,
+		time INT DEFAULT 0,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (rival_id) REFERENCES users(id) ON DELETE SET NULL,
 		FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE,

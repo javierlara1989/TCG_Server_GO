@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"tcg-server-go/database"
+
+	"github.com/gorilla/mux"
 )
 
 // CreateTableRequest represents the request body for creating a table
@@ -49,6 +51,7 @@ type UserTableResponse struct {
 	UserID     uint          `json:"user_id"`
 	RivalID    *uint         `json:"rival_id,omitempty"`
 	TableID    uint          `json:"table_id"`
+	Time       int           `json:"time"`
 	Table      TableResponse `json:"table"`
 	UserName   string        `json:"user_name"`
 	UserEmail  string        `json:"user_email"`
@@ -306,7 +309,7 @@ func GetUserTables(w http.ResponseWriter, r *http.Request) {
 		var rivalName, rivalEmail sql.NullString
 
 		err := rows.Scan(
-			&ut.ID, &ut.UserID, &ut.RivalID, &ut.TableID,
+			&ut.ID, &ut.UserID, &ut.RivalID, &ut.TableID, &ut.Time,
 			&ut.UserName, &ut.UserEmail,
 			&rivalName, &rivalEmail,
 			&ut.Table.Category, &ut.Table.Privacy, &ut.Table.Prize, &ut.Table.Amount, &ut.Table.Winner,
@@ -332,5 +335,112 @@ func GetUserTables(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"tables": userTables,
+	})
+}
+
+// UpdateUserTableTimeRequest represents the request for updating user table time
+type UpdateUserTableTimeRequest struct {
+	Time int `json:"time"`
+}
+
+// UpdateUserTableTime updates the time field for a user table
+func UpdateUserTableTime(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context
+	userID, ok := r.Context().Value("user_id").(uint)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get table ID from URL parameters
+	vars := mux.Vars(r)
+	tableIDStr, ok := vars["id"]
+	if !ok {
+		http.Error(w, "Table ID is required", http.StatusBadRequest)
+		return
+	}
+
+	tableID, err := strconv.ParseUint(tableIDStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid table ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var req UpdateUserTableTimeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate time value
+	if req.Time < 0 {
+		http.Error(w, "Time must be a non-negative number", http.StatusBadRequest)
+		return
+	}
+
+	// Check if user is associated with this table
+	isOwner, err := database.IsTableOwner(userID, uint(tableID))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error checking table ownership: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if !isOwner {
+		http.Error(w, "You can only update time for your own tables", http.StatusForbidden)
+		return
+	}
+
+	// Get the user table ID (we need to find the user table record)
+	// For now, we'll use a simple approach - you might want to add a function to get user table by user and table IDs
+	rows, err := database.GetUserTablesByUserID(userID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving user tables: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var userTableID uint
+	found := false
+	for rows.Next() {
+		var ut UserTableResponse
+		var rivalName, rivalEmail sql.NullString
+
+		err := rows.Scan(
+			&ut.ID, &ut.UserID, &ut.RivalID, &ut.TableID, &ut.Time,
+			&ut.UserName, &ut.UserEmail,
+			&rivalName, &rivalEmail,
+			&ut.Table.Category, &ut.Table.Privacy, &ut.Table.Prize, &ut.Table.Amount, &ut.Table.Winner,
+			&ut.Table.CreatedAt, &ut.Table.UpdatedAt, &ut.Table.FinishedAt,
+		)
+		if err != nil {
+			http.Error(w, "Error reading table data", http.StatusInternalServerError)
+			return
+		}
+
+		if ut.TableID == uint(tableID) {
+			userTableID = ut.ID
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		http.Error(w, "Table not found or you don't have access to it", http.StatusNotFound)
+		return
+	}
+
+	// Update the time
+	err = database.UpdateUserTableTime(userTableID, req.Time)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error updating table time: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Table time updated successfully",
+		"time":    req.Time,
 	})
 }

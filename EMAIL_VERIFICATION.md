@@ -34,15 +34,15 @@ User requests new code → System generates new code → Email sent → User rec
 ### Example User Record
 ```sql
 INSERT INTO users (
-    nombre, 
+    name, 
     email, 
     password, 
     validation_code, 
     validation_code_expires_at, 
     validated_at
 ) VALUES (
-    'Juan Pérez',
-    'juan@example.com',
+    'John Doe',
+    'john@example.com',
     '$2a$10$...', -- hashed password
     'A1B2C3',
     '2024-01-15 10:30:00',
@@ -58,8 +58,8 @@ Creates a new user account and generates a validation code.
 **Request:**
 ```json
 {
-  "nombre": "Juan Pérez",
-  "email": "juan@example.com",
+  "name": "John Doe",
+  "email": "john@example.com",
   "password": "password123"
 }
 ```
@@ -86,7 +86,7 @@ Verifies user's email with the provided validation code.
 **Request:**
 ```json
 {
-  "email": "juan@example.com",
+  "email": "john@example.com",
   "validation_code": "A1B2C3"
 }
 ```
@@ -127,7 +127,7 @@ Generates and sends a new validation code.
 **Request:**
 ```json
 {
-  "email": "juan@example.com"
+  "email": "john@example.com"
 }
 ```
 

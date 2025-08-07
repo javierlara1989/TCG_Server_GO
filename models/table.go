@@ -22,6 +22,7 @@ type UserTable struct {
 	UserID  uint  `json:"user_id"`
 	RivalID *uint `json:"rival_id,omitempty"`
 	TableID uint  `json:"table_id"`
+	Time    int   `json:"time"`
 	User    User  `json:"user,omitempty"`
 	Rival   *User `json:"rival,omitempty"`
 	Table   Table `json:"table,omitempty"`

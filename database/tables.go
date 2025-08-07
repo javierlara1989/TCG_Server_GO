@@ -35,8 +35,8 @@ func CreateTable(category, privacy, prize string, password *string, amount *int)
 // CreateUserTable creates a new user table association
 func CreateUserTable(userID, tableID uint, rivalID *uint) error {
 	query := `
-		INSERT INTO user_tables (user_id, rival_id, table_id)
-		VALUES (?, ?, ?)
+		INSERT INTO user_tables (user_id, rival_id, table_id, time)
+		VALUES (?, ?, ?, 0)
 	`
 
 	_, err := DB.Exec(query, userID, rivalID, tableID)
@@ -61,9 +61,9 @@ func GetTableByID(id uint) (*sql.Row, error) {
 // GetUserTableByTableID retrieves user table by table ID
 func GetUserTableByTableID(tableID uint) (*sql.Row, error) {
 	query := `
-		SELECT ut.id, ut.user_id, ut.rival_id, ut.table_id,
-		       u.nombre as user_name, u.email as user_email,
-		       r.nombre as rival_name, r.email as rival_email,
+		SELECT ut.id, ut.user_id, ut.rival_id, ut.table_id, ut.time,
+		       u.name as user_name, u.email as user_email,
+		       r.name as rival_name, r.email as rival_email,
 		       t.category, t.privacy, t.prize, t.amount, t.winner, t.created_at, t.updated_at, t.finished_at
 		FROM user_tables ut
 		JOIN users u ON ut.user_id = u.id
@@ -79,9 +79,9 @@ func GetUserTableByTableID(tableID uint) (*sql.Row, error) {
 // GetUserTablesByUserID retrieves all user tables for a specific user
 func GetUserTablesByUserID(userID uint) (*sql.Rows, error) {
 	query := `
-		SELECT ut.id, ut.user_id, ut.rival_id, ut.table_id,
-		       u.nombre as user_name, u.email as user_email,
-		       r.nombre as rival_name, r.email as rival_email,
+		SELECT ut.id, ut.user_id, ut.rival_id, ut.table_id, ut.time,
+		       u.name as user_name, u.email as user_email,
+		       r.name as rival_name, r.email as rival_email,
 		       t.category, t.privacy, t.prize, t.amount, t.winner, t.created_at, t.updated_at, t.finished_at
 		FROM user_tables ut
 		JOIN users u ON ut.user_id = u.id
@@ -154,6 +154,22 @@ func IsTableWaitingForRival(tableID uint) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// UpdateUserTableTime updates the time field for a user table
+func UpdateUserTableTime(userTableID uint, time int) error {
+	query := `
+		UPDATE user_tables 
+		SET time = ?
+		WHERE id = ?
+	`
+
+	_, err := DB.Exec(query, time, userTableID)
+	if err != nil {
+		return fmt.Errorf("error updating user table time: %v", err)
+	}
+
+	return nil
 }
 
 // DeleteTable deletes a table and its associated user table

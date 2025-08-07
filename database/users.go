@@ -20,7 +20,7 @@ func CreateUser(user *models.User) error {
 	user.ValidationCodeExpiresAt = &expiresAt
 
 	query := `
-		INSERT INTO users (nombre, email, password, validation_code, validation_code_expires_at, created_at, updated_at)
+		INSERT INTO users (name, email, password, validation_code, validation_code_expires_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -28,7 +28,7 @@ func CreateUser(user *models.User) error {
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
-	result, err := DB.Exec(query, user.Nombre, user.Email, user.Password, user.ValidationCode, user.ValidationCodeExpiresAt, user.CreatedAt, user.UpdatedAt)
+	result, err := DB.Exec(query, user.Name, user.Email, user.Password, user.ValidationCode, user.ValidationCodeExpiresAt, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func CreateUser(user *models.User) error {
 // GetUserByEmail retrieves a user by email
 func GetUserByEmail(email string) (*models.User, error) {
 	query := `
-		SELECT id, nombre, email, password, validation_code, validation_code_expires_at, validated_at, created_at, updated_at, deleted_at
+		SELECT id, name, email, password, validation_code, validation_code_expires_at, validated_at, created_at, updated_at, deleted_at
 		FROM users
 		WHERE email = ? AND deleted_at IS NULL
 	`
@@ -53,7 +53,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 	user := &models.User{}
 	err := DB.QueryRow(query, email).Scan(
 		&user.ID,
-		&user.Nombre,
+		&user.Name,
 		&user.Email,
 		&user.Password,
 		&user.ValidationCode,
@@ -77,7 +77,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 // GetUserByID retrieves a user by ID
 func GetUserByID(id int) (*models.User, error) {
 	query := `
-		SELECT id, nombre, email, password, validation_code, validation_code_expires_at, validated_at, created_at, updated_at, deleted_at
+		SELECT id, name, email, password, validation_code, validation_code_expires_at, validated_at, created_at, updated_at, deleted_at
 		FROM users
 		WHERE id = ? AND deleted_at IS NULL
 	`
@@ -85,7 +85,7 @@ func GetUserByID(id int) (*models.User, error) {
 	user := &models.User{}
 	err := DB.QueryRow(query, id).Scan(
 		&user.ID,
-		&user.Nombre,
+		&user.Name,
 		&user.Email,
 		&user.Password,
 		&user.ValidationCode,
@@ -214,13 +214,13 @@ func generateValidationCode() string {
 func UpdateUser(user *models.User) error {
 	query := `
 		UPDATE users
-		SET nombre = ?, email = ?, updated_at = ?
+		SET name = ?, email = ?, updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL
 	`
 
 	user.UpdatedAt = time.Now()
 
-	result, err := DB.Exec(query, user.Nombre, user.Email, user.UpdatedAt, user.ID)
+	result, err := DB.Exec(query, user.Name, user.Email, user.UpdatedAt, user.ID)
 	if err != nil {
 		return err
 	}

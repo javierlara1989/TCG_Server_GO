@@ -27,7 +27,7 @@ type Claims struct {
 
 type User struct {
 	ID                      int        `json:"id" db:"id"`
-	Nombre                  string     `json:"nombre" db:"nombre" validate:"required,min=6,alpha"`
+	Name                    string     `json:"name" db:"name" validate:"required,min=6,name"`
 	Email                   string     `json:"email" db:"email" validate:"required,email"`
 	Password                string     `json:"-" db:"password" validate:"required,min=6,alphanum"` // Excluded from JSON serialization
 	ValidationCode          *string    `json:"-" db:"validation_code"`
@@ -40,7 +40,7 @@ type User struct {
 
 // CreateUserRequest represents the data needed to create a new user
 type CreateUserRequest struct {
-	Nombre   string `json:"nombre" validate:"required,min=6,alpha"`
+	Name     string `json:"name" validate:"required,min=6,name"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=6,alphanum"`
 }

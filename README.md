@@ -37,10 +37,10 @@ Each user account has an associated `UserInfo` record that contains:
 
 ## Input Validation Rules
 
-### Nombre (Name)
+### Name
 - **Minimum 6 characters**
 - **Only letters and spaces allowed**
-- **Supports Spanish characters** (á, é, í, ó, ú, ñ)
+- **Supports international characters** (á, é, í, ó, ú, ñ)
 
 ### Password
 - **Minimum 6 characters**
@@ -71,8 +71,8 @@ Registers a new user with validation. Generates a validation code that should be
 **Request:**
 ```json
 {
-  "nombre": "Juan Pérez",
-  "email": "juan@example.com",
+  "name": "John Doe",
+  "email": "john@example.com",
   "password": "password123"
 }
 ```
@@ -90,7 +90,7 @@ Verifies a user's email with the provided validation code.
 **Request:**
 ```json
 {
-  "email": "juan@example.com",
+  "email": "john@example.com",
   "validation_code": "A1B2C3"
 }
 ```
@@ -109,7 +109,7 @@ Resends a new validation code to the user's email.
 **Request:**
 ```json
 {
-  "email": "juan@example.com"
+  "email": "john@example.com"
 }
 ```
 
@@ -126,7 +126,7 @@ Authenticates user with email and password.
 **Request:**
 ```json
 {
-  "email": "juan@example.com",
+  "email": "john@example.com",
   "password": "password123"
 }
 ```
@@ -407,8 +407,8 @@ The application includes comprehensive database operations:
 curl -X POST http://localhost:8080/register \
   -H "Content-Type: application/json" \
   -d '{
-    "nombre": "María García",
-    "email": "maria@example.com",
+    "name": "Mary Garcia",
+    "email": "mary@example.com",
     "password": "password123"
   }'
 
@@ -416,7 +416,7 @@ curl -X POST http://localhost:8080/register \
 curl -X POST http://localhost:8080/verify-email \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "maria@example.com",
+    "email": "mary@example.com",
     "validation_code": "A1B2C3"
   }'
 
@@ -424,7 +424,7 @@ curl -X POST http://localhost:8080/verify-email \
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "maria@example.com",
+    "email": "mary@example.com",
     "password": "password123"
   }'
 ```
