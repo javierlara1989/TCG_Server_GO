@@ -222,6 +222,42 @@ func CreateTables() error {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`
 
+	createTableStateTable := `
+	CREATE TABLE IF NOT EXISTS table_state (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		table_id INT NOT NULL,
+		log LONGTEXT NOT NULL,
+		owners_deck_id INT NULL,
+		rivals_deck_id INT NULL,
+		owners_active_monster JSON NULL,
+		owners_bench_monster_1 JSON NULL,
+		owners_bench_monster_2 JSON NULL,
+		owners_bench_monster_3 JSON NULL,
+		owners_active_monster_hp INT NULL,
+		owners_bench_monster_1_hp INT NULL,
+		owners_bench_monster_2_hp INT NULL,
+		owners_bench_monster_3_hp INT NULL,
+		owners_graveyard JSON NULL,
+		rivals_active_monster JSON NULL,
+		rivals_bench_monster_1 JSON NULL,
+		rivals_bench_monster_2 JSON NULL,
+		rivals_bench_monster_3 JSON NULL,
+		rivals_active_monster_hp INT NULL,
+		rivals_bench_monster_1_hp INT NULL,
+		rivals_bench_monster_2_hp INT NULL,
+		rivals_bench_monster_3_hp INT NULL,
+		rivals_graveyard JSON NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE,
+		FOREIGN KEY (owners_deck_id) REFERENCES decks(id) ON DELETE SET NULL,
+		FOREIGN KEY (rivals_deck_id) REFERENCES decks(id) ON DELETE SET NULL,
+		INDEX idx_table_id (table_id),
+		INDEX idx_owners_deck_id (owners_deck_id),
+		INDEX idx_rivals_deck_id (rivals_deck_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`
+
 	// Create users table first
 	_, err := DB.Exec(createUsersTable)
 	if err != nil {
@@ -280,6 +316,12 @@ func CreateTables() error {
 	_, err = DB.Exec(createCardEffectsTable)
 	if err != nil {
 		return fmt.Errorf("error creating card_effects table: %v", err)
+	}
+
+	// Create table_state table
+	_, err = DB.Exec(createTableStateTable)
+	if err != nil {
+		return fmt.Errorf("error creating table_state table: %v", err)
 	}
 
 	log.Println("Database tables created successfully")
