@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"tcg-server-go/auth"
+	"tcg-server-go/database"
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {
@@ -26,6 +28,28 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Get user from database to check validation status
+		user, err := database.GetUserByID(claims.UserID)
+		if err != nil {
+			http.Error(w, "Error retrieving user", http.StatusInternalServerError)
+			return
+		}
+
+		if user == nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user's email has been validated
+		if user.ValidatedAt == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "Email not verified. Please verify your email before accessing this resource.",
+			})
 			return
 		}
 

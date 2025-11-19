@@ -21,6 +21,26 @@ A modular Go server that handles JWT authentication with MariaDB database integr
 - **Email verification workflow** with expiration and resend functionality
 - **Game progression system** with automatic level up and rewards
 
+## Quick Start with Docker
+
+The easiest way to run this server is using Docker Compose, which sets up both the server and MariaDB database in isolated containers:
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+For detailed Docker instructions, see [DOCKER.md](./DOCKER.md).
+
 ## Game User Management
 
 ### UserInfo Model

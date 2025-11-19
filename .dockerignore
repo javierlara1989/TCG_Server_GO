@@ -1,0 +1,33 @@
+# Binaries
+tcg-server-go
+tcg-server-go.exe
+*.exe
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (we'll use docker-compose env)
+.env
+.env.local
+
+# Test files
+*_test.go
+
+# Logs
+*.log
